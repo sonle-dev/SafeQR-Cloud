@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeQR-Cloud | Quét Mã VietQR An Toàn</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col items-center p-4 md:p-8">
+
+  <!-- Header Section: Tối ưu cho người cao tuổi, chữ to, rõ ràng -->
+  <header class="w-full max-w-xl text-center mb-6">
+    <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-1.5 rounded-full text-sm font-semibold mb-2">
+      <i data-lucide="shield-check" class="w-4 h-4 text-blue-600"></i>
+      Hệ Thống Bảo Vệ Chuyển Khoản An Toàn
+    </div>
+    <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">SafeQR-Cloud</h1>
+    <p class="text-base md:text-lg text-slate-600 mt-1 font-medium">
+      Kiểm tra mã VietQR trước khi chuyển tiền để tránh bẫy lừa đảo
+    </p>
+  </header>
+
+  <main class="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden p-6 md:p-8">
+    
+    <!-- Tab Controls: Camera, Tải ảnh, Chuỗi Test -->
+    <div class="flex rounded-2xl bg-slate-100 p-1 mb-6 text-sm md:text-base font-bold">
+      <button id="tab-camera" onclick="switchTab('camera')" class="flex-1 py-3 rounded-xl transition bg-white text-blue-700 shadow-sm flex items-center justify-center gap-2">
+        <i data-lucide="camera" class="w-5 h-5"></i> Quét Camera
+      </button>
+      <button id="tab-demo" onclick="switchTab('demo')" class="flex-1 py-3 rounded-xl transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2">
+        <i data-lucide="flask-conical" class="w-5 h-5"></i> Mẫu Thử Nghiệm
+      </button>
+    </div>
+
+    <!-- Scanner Camera View -->
+    <div id="view-camera" class="block">
+      <div id="qr-reader" class="w-full rounded-2xl overflow-hidden border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center min-h-[260px]"></div>
+      <div class="mt-4 text-center">
+        <p class="text-sm text-slate-500 font-medium">Hoặc tải lên ảnh chụp giấy báo / mã QR:</p>
+        <label class="mt-2 inline-flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-5 py-3 rounded-2xl cursor-pointer transition text-base">
+          <i data-lucide="image-up" class="w-5 h-5"></i> Chọn Ảnh Có Mã QR
+          <input type="file" id="qr-input-file" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Demo Test Strings View -->
+    <div id="view-demo" class="hidden">
+      <p class="text-sm font-semibold text-slate-600 mb-3">Chọn tình huống thực tế để kiểm tra nhanh:</p>
+      <div class="space-y-3">
+        <button onclick="runDemo(1)" class="w-full p-4 text-left border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 rounded-2xl transition">
+          <div class="font-bold text-emerald-900 flex items-center gap-2 text-base">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i> Ca 1: Giao dịch an toàn
+          </div>
+          <p class="text-xs md:text-sm text-emerald-700 mt-1">Chuyển tiền ăn trưa 45.000đ vào tài khoản Techcombank bình thường.</p>
+        </button>
+
+        <button onclick="runDemo(2)" class="w-full p-4 text-left border-2 border-rose-300 bg-rose-50 hover:bg-rose-100 rounded-2xl transition">
+          <div class="font-bold text-rose-900 flex items-center gap-2 text-base">
+            <i data-lucide="alert-octagon" class="w-5 h-5 text-rose-600"></i> Ca 2: Lừa đảo phạt nguội / Mạo danh công an
+          </div>
+          <p class="text-xs md:text-sm text-rose-700 mt-1">Đòi nộp phạt VNeID 3.500.000đ nhưng nhận bằng STK cá nhân MBBank.</p>
+        </button>
+      </div>
+
+      <div class="mt-5">
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Chuỗi mã VietQR thô:</label>
+        <textarea id="raw-qr-input" rows="3" placeholder="Dán chuỗi VietQR (bắt đầu bằng 000201...)" class="w-full p-3 font-mono text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        <button onclick="analyzeCurrentInput()" class="mt-2 w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-lg rounded-2xl shadow-lg transition flex items-center justify-center gap-2">
+          <i data-lucide="scan-line" class="w-5 h-5"></i> Bắt Đầu Phân Tích
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="hidden my-8 text-center">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+      <p class="mt-3 text-base font-bold text-slate-700">Đang giải mã chuẩn EMVCo & chạy mô hình AI...</p>
+    </div>
+
+    <!-- Result Container: 3 Trạng thái Xanh / Vàng / Đỏ -->
+    <div id="result-container" class="hidden mt-6 pt-6 border-t border-slate-200">
+      
+      <!-- Card Cảnh báo Động -->
+      <div id="status-card" class="p-5 md:p-6 rounded-3xl border-4 text-center">
+        <div id="status-icon" class="flex justify-center mb-3"></div>
+        <h2 id="status-title" class="text-2xl md:text-3xl font-black mb-1"></h2>
+        <p id="status-subtitle" class="text-base md:text-lg font-bold opacity-90"></p>
+        <div id="risk-badge" class="mt-3 inline-block px-4 py-1.5 rounded-full font-black text-sm tracking-wide"></div>
+      </div>
+
+      <!-- Chi tiết bóc tách giao dịch -->
+      <div class="mt-5 bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-sm md:text-base">
+        <div class="flex justify-between py-1 border-b border-slate-200">
+          <span class="text-slate-500 font-medium">Ngân hàng thụ hưởng:</span>
+          <span id="res-bank" class="font-bold text-slate-900"></span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-slate-200">
+          <span class="text-slate-500 font-medium">Số tài khoản:</span>
+          <span id="res-account" class="font-bold text-slate-900 font-mono text-base"></span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-slate-200">
+          <span class="text-slate-500 font-medium">Số tiền:</span>
+          <span id="res-amount" class="font-extrabold text-blue-700 text-lg"></span>
+        </div>
+        <div class="flex flex-col py-1">
+          <span class="text-slate-500 font-medium mb-1">Nội dung chuyển tiền:</span>
+          <span id="res-message" class="font-semibold bg-white p-2.5 rounded-xl border border-slate-200 text-slate-800 break-words"></span>
+        </div>
+      </div>
+
+      <!-- Hộp giải thích logic & Cảnh báo người thân -->
+      <div id="explanation-box" class="mt-4 p-4 rounded-2xl text-sm font-semibold"></div>
+
+      <!-- Action Button: Cho phép hoặc Khóa chuyển tiền -->
+      <div class="mt-6">
+        <button id="btn-proceed" class="w-full py-4 rounded-2xl font-black text-xl shadow-lg transition flex items-center justify-center gap-2">
+          <span>Tiếp tục chuyển tiền</span>
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-8 text-center text-xs md:text-sm text-slate-500 font-medium">
+    SafeQR-Cloud © 2026 — Nhóm 19 | Đề tài Điện toán đám mây
+  </footer>
+
+  <script>
+    lucide.createIcons();
+    let html5QrCode = null;
+    const API_BASE = "http://localhost:8000/api/v1";
+
+    // Demo samples with valid CRC
+    // Sample 1: Safe Techcombank 45k
+    // Sample 2: Fraud MBBank NOP PHAT NGUOI VNEID
+    const DEMO_STRINGS = {
+      1: "00020101021238420010A000000727012400069704070110190367890153037045405450005802VN62220818com trua van phong6304",
+      2: "00020101021238420010A00000072701240006970422011003456789015303704540735000005802VN62350831NOP PHAT NGUOI VNEID GIAO THONG6304"
+    };
+
+    function switchTab(tab) {
+      const isCamera = tab === 'camera';
+      document.getElementById('view-camera').classList.toggle('hidden', !isCamera);
+      document.getElementById('view-demo').classList.toggle('hidden', isCamera);
+
+      document.getElementById('tab-camera').className = isCamera 
+        ? "flex-1 py-3 rounded-xl transition bg-white text-blue-700 shadow-sm flex items-center justify-center gap-2"
+        : "flex-1 py-3 rounded-xl transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2";
+        
+      document.getElementById('tab-demo').className = !isCamera 
+        ? "flex-1 py-3 rounded-xl transition bg-white text-blue-700 shadow-sm flex items-center justify-center gap-2"
+        : "flex-1 py-3 rounded-xl transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2";
+
+      if (isCamera) {
+        startScanner();
+      } else if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop();
+      }
+    }
+
+    function calculateCrc16(str) {
+      let crc = 0xFFFF;
+      for (let i = 0; i < str.length; i++) {
+        crc ^= (str.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+          if ((crc & 0x8000) !== 0) {
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+          } else {
+            crc = (crc << 1) & 0xFFFF;
+          }
+        }
+      }
+      return crc.toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    function runDemo(type) {
+      let rawBase = DEMO_STRINGS[type];
+      let crc = calculateCrc16(rawBase);
+      let fullQR = rawBase + crc;
+      document.getElementById('raw-qr-input').value = fullQR;
+      sendToBackend(fullQR);
+    }
+
+    function analyzeCurrentInput() {
+      const val = document.getElementById('raw-qr-input').value.trim();
+      if (!val) {
+        alert("Vui lòng dán hoặc nhập chuỗi VietQR!");
+        return;
+      }
+      sendToBackend(val);
+    }
+
+    async function sendToBackend(rawQr) {
+      document.getElementById('loading-spinner').classList.remove('hidden');
+      document.getElementById('result-container').classList.add('hidden');
+
+      try {
+        const resp = await fetch(`${API_BASE}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ raw_qr: rawQr })
+        });
+        const data = await resp.json();
+        document.getElementById('loading-spinner').classList.add('hidden');
+
+        if (!resp.ok) {
+          alert("Lỗi phân tích: " + (data.detail || "Không rõ nguyên nhân"));
+          return;
+        }
+
+        displayResult(data);
+      } catch (err) {
+        document.getElementById('loading-spinner').classList.add('hidden');
+        alert("Không thể kết nối đến Backend (" + API_BASE + "). Hãy chắc chắn rằng bạn đã khởi chạy FastAPI!");
+      }
+    }
+
+    function displayResult(res) {
+      const container = document.getElementById('result-container');
+      const card = document.getElementById('status-card');
+      const icon = document.getElementById('status-icon');
+      const title = document.getElementById('status-title');
+      const subtitle = document.getElementById('status-subtitle');
+      const badge = document.getElementById('risk-badge');
+      const explain = document.getElementById('explanation-box');
+      const btn = document.getElementById('btn-proceed');
+
+      container.classList.remove('hidden');
+
+      // Fill info
+      document.getElementById('res-bank').textContent = res.beneficiary.bank_bin || "Napas (Chung)";
+      document.getElementById('res-account').textContent = res.beneficiary.account_number || "Chưa xác định";
+      document.getElementById('res-amount').textContent = res.beneficiary.amount 
+        ? Number(res.beneficiary.amount).toLocaleString('vi-VN') + " đ" 
+        : "Không chỉ định (QR Tĩnh)";
+      document.getElementById('res-message').textContent = res.beneficiary.message || "(Không có lời nhắn)";
+
+      const risk = res.risk;
+
+      if (risk.level === 'SAFE') {
+        card.className = "p-5 md:p-6 rounded-3xl border-4 text-center bg-emerald-50 border-emerald-500 text-emerald-950";
+        icon.innerHTML = `<i data-lucide="shield-check" class="w-14 h-14 text-emerald-600"></i>`;
+        title.textContent = "GIAO DỊCH AN TOÀN";
+        subtitle.textContent = "Xác minh tài khoản hợp lệ, không có dấu hiệu đe dọa.";
+        badge.className = "mt-3 inline-block px-4 py-1.5 rounded-full font-black text-sm bg-emerald-600 text-white";
+        badge.textContent = `Điểm rủi ro: ${risk.score}/100`;
+
+        explain.className = "mt-4 p-4 rounded-2xl text-sm font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300";
+        explain.textContent = "✅ " + risk.reason;
+
+        btn.className = "w-full py-4 rounded-2xl font-black text-xl shadow-lg transition flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+        btn.innerHTML = `<i data-lucide="arrow-right-circle" class="w-6 h-6"></i> Tiếp Tục Chuyển Khoản`;
+        btn.disabled = false;
+
+      } else if (risk.level === 'SUSPICIOUS') {
+        card.className = "p-5 md:p-6 rounded-3xl border-4 text-center bg-amber-50 border-amber-500 text-amber-950";
+        icon.innerHTML = `<i data-lucide="alert-triangle" class="w-14 h-14 text-amber-600"></i>`;
+        title.textContent = "CẢNH BÁO: CẦN XÁC MINH";
+        subtitle.textContent = "Tài khoản cá nhân, hãy kiểm tra kỹ trước khi bấm chuyển.";
+        badge.className = "mt-3 inline-block px-4 py-1.5 rounded-full font-black text-sm bg-amber-500 text-white";
+        badge.textContent = `Điểm rủi ro: ${risk.score}/100`;
+
+        explain.className = "mt-4 p-4 rounded-2xl text-sm font-semibold bg-amber-100 text-amber-900 border border-amber-300";
+        explain.textContent = "⚠️ " + risk.reason;
+
+        btn.className = "w-full py-4 rounded-2xl font-black text-xl shadow-lg transition flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white cursor-pointer";
+        btn.innerHTML = `<i data-lucide="phone-call" class="w-6 h-6"></i> Hãy Gọi Điện Cho Người Nhận Trước`;
+        btn.disabled = false;
+
+      } else {
+        // HIGH_RISK
+        card.className = "p-5 md:p-6 rounded-3xl border-4 text-center bg-rose-50 border-rose-600 text-rose-950 animate-pulse";
+        icon.innerHTML = `<i data-lucide="shield-alert" class="w-14 h-14 text-rose-600"></i>`;
+        title.textContent = "CẢNH BÁO LỪA ĐẢO NGUY HIỂM!";
+        subtitle.textContent = "PHÁT HIỆN DẤU HIỆU MẠO DANH CÔNG QUYỀN ĐỂ ÉP CHUYỂN TIỀN";
+        badge.className = "mt-3 inline-block px-4 py-1.5 rounded-full font-black text-sm bg-rose-600 text-white";
+        badge.textContent = `Điểm rủi ro: ${risk.score}/100 (Cực kỳ nguy hiểm)`;
+
+        explain.className = "mt-4 p-4 rounded-2xl text-sm font-semibold bg-rose-100 text-rose-900 border border-rose-300 space-y-1";
+        explain.innerHTML = `
+          <p>🚨 <strong>Lý do chặn:</strong> ${risk.reason}</p>
+          <p>⚠️ <em>Cơ quan Công an / Tòa án / Thuế KHÔNG BAO GIỜ yêu cầu nộp phạt vào STK cá nhân!</em></p>
+          ${res.alert_triggered ? '<p class="text-rose-700 font-bold mt-2">📲 Hệ thống đã kích hoạt tin nhắn cảnh báo khẩn cấp tới điện thoại con cái/người thân của bạn!</p>' : ''}
+        `;
+
+        btn.className = "w-full py-4 rounded-2xl font-black text-xl shadow-lg transition flex items-center justify-center gap-2 bg-slate-300 text-slate-500 cursor-not-allowed";
+        btn.innerHTML = `<i data-lucide="lock" class="w-6 h-6"></i> NÚT CHUYỂN TIỀN ĐÃ BỊ KHÓA`;
+        btn.disabled = true;
+      }
+
+      lucide.createIcons();
+    }
+
+    function startScanner() {
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+      }
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          html5QrCode.stop();
+          sendToBackend(decodedText);
+        },
+        (error) => {}
+      ).catch(err => {
+        console.warn("Camera start failed: ", err);
+      });
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+      }
+      html5QrCode.scanFile(file, true)
+        .then(decodedText => {
+          sendToBackend(decodedText);
+        })
+        .catch(err => {
+          alert("Không tìm thấy mã QR hợp lệ trong bức ảnh!");
+        });
+    }
+  </script>
+</body>
+</html>
