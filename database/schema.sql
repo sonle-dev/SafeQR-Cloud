@@ -1,5 +1,5 @@
 -- ====================================================================
--- SafeQR-Cloud Database Schema (PostgreSQL - Neon Serverless)
+-- SafeQR-Cloud Database Schema (PostgreSQL - IaaS & Local Dev)
 -- ====================================================================
 
 -- 1. Bảng danh sách đen các tài khoản ngân hàng lừa đảo (Blacklist)
@@ -54,3 +54,28 @@ CREATE TABLE IF NOT EXISTS scan_logs (
 -- Index phục vụ thống kê & tra cứu log
 CREATE INDEX IF NOT EXISTS idx_scan_logs_qr_hash ON scan_logs (qr_hash);
 CREATE INDEX IF NOT EXISTS idx_scan_logs_created_at ON scan_logs (created_at DESC);
+
+-- ====================================================================
+-- DỮ LIỆU MẪU (MOCK DATA) CHO DEMO VÀ BÁO CÁO MÔN HỌC
+-- ====================================================================
+
+-- 1. Nạp danh sách đen mẫu
+INSERT INTO blacklists (bank_bin, account_number, account_name, reason, reported_count, status)
+VALUES 
+    ('970422', '0345678901', 'NGUYEN VAN LUA DAO', 'Mạo danh Cục CSGT gửi trát phạt nguội VNeID', 15, 'VERIFIED'),
+    ('970407', '1903999999', 'TRAN THI DỤ DỖ', 'Giả mạo nhân viên sàn thương mại điện tử tuyển CTV', 8, 'VERIFIED'),
+    ('970436', '0071001234567', 'LE VAN THAO TUNG', 'Mạo danh Viện kiểm sát yêu cầu chuyển tiền điều tra', 23, 'VERIFIED')
+ON CONFLICT (bank_bin, account_number) DO NOTHING;
+
+-- 2. Nạp liên kết người giám hộ mẫu (Chat ID của bạn)
+INSERT INTO guardians (elder_phone, elder_name, guardian_name, guardian_telegram_chat_id, guardian_phone, is_active)
+VALUES 
+    ('0912345678', 'Bố Nguyễn Văn An (68 tuổi)', 'Sơn (Con trai)', '5456687635', '0987654321', TRUE),
+    ('0988776655', 'Mẹ Trần Thị Mai (65 tuổi)', 'Sơn (Con trai)', '5456687635', '0987654321', TRUE)
+ON CONFLICT (elder_phone, guardian_telegram_chat_id) DO NOTHING;
+
+-- 3. Nạp lịch sử quét mẫu
+INSERT INTO scan_logs (qr_hash, bank_bin, account_number, amount, message, risk_score, risk_level, conflict_detected, ml_probability, velocity_count, alert_sent)
+VALUES 
+    ('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '970407', '1903678901', 45000, 'com trua van phong', 13, 'SAFE', FALSE, 0.12, 1, FALSE),
+    ('a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e', '970422', '0345678901', 3500000, 'NOP PHAT NGUOI VNEID GIAO THONG', 95, 'HIGH_RISK', TRUE, 0.89, 5, TRUE);
