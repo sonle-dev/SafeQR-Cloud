@@ -32,6 +32,12 @@ app.include_router(router)
 # Mount Frontend static files
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
 
+@app.get("/{filename}.png")
+def serve_qr_image(filename: str):
+    file_path = os.path.join(frontend_dir, f"{filename}.png")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/png")
+    return {"error": "Image not found"}
 @app.get("/")
 @app.get("/index.html")
 @app.get("/app")
