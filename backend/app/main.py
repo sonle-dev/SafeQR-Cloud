@@ -1,5 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from .core.config import settings
 from .api.routes import router
 
@@ -26,8 +29,16 @@ app.add_middleware(
 
 app.include_router(router)
 
+# Mount Frontend static files
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+
 @app.get("/")
-def root():
+@app.get("/index.html")
+@app.get("/app")
+def serve_frontend():
+    index_file = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
     return {
         "message": "SafeQR-Cloud API is running",
         "docs": "/docs",
