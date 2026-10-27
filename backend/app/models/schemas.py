@@ -29,3 +29,15 @@ class ScanQRResponse(BaseModel):
     alert_triggered: bool = False
     conflict_detected: bool = False
     detected_keywords: List[str] = []
+
+class RegisterGuardianRequest(BaseModel):
+    elder_phone: str = Field(..., description="Số điện thoại của người cao tuổi / phụ huynh")
+    elder_name: str = Field(..., description="Tên của người cao tuổi (ví dụ: Bố An)")
+    guardian_name: str = Field(..., description="Tên của người bảo hộ / con cái (ví dụ: Sơn)")
+    guardian_telegram_chat_id: str = Field(..., description="Telegram Chat ID của người bảo hộ")
+    guardian_phone: Optional[str] = Field(None, description="Số điện thoại của con cái")
+
+class RegisterGuardianResponse(BaseModel):
+    success: bool
+    message: str
+    data: Optional[Dict[str, Any]] = None

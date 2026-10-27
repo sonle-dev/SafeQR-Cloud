@@ -18,6 +18,18 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col items-center p-4 md:p-8">
 
+  <!-- Top Action Bar: Hiển thị trạng thái bảo hộ & Nút mở cấu hình -->
+  <div class="w-full max-w-xl flex items-center justify-between mb-4">
+    <div id="guardian-badge" class="inline-flex items-center gap-1.5 bg-white border border-slate-300 text-slate-700 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm">
+      <i data-lucide="shield" class="w-4 h-4 text-slate-500"></i>
+      <span id="guardian-badge-text">Chưa liên kết bảo hộ</span>
+    </div>
+    <button onclick="openGuardianModal()" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm transition">
+      <i data-lucide="users" class="w-4 h-4"></i>
+      <span>Cài Đặt Người Bảo Hộ</span>
+    </button>
+  </div>
+
   <!-- Header Section: Tối ưu cho người cao tuổi, chữ to, rõ ràng -->
   <header class="w-full max-w-xl text-center mb-6">
     <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-1.5 rounded-full text-sm font-semibold mb-2">
@@ -133,6 +145,62 @@
 
   </main>
 
+  <!-- Modal Tự Khai Báo Người Bảo Hộ / Con cái -->
+  <div id="guardian-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative animate-in fade-in duration-200">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-blue-100 rounded-xl text-blue-700">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Liên Kết Người Bảo Hộ</h3>
+            <p class="text-xs text-slate-500">Chỉ cần cài đặt 1 lần duy nhất</p>
+          </div>
+        </div>
+        <button onclick="closeGuardianModal()" class="text-slate-400 hover:text-slate-700 p-1">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-sm">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Số điện thoại của người quét (Bố/Mẹ):</label>
+          <input type="text" id="cfg-elder-phone" placeholder="Vd: 0912345678" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tên người thân (Bố/Mẹ):</label>
+          <input type="text" id="cfg-elder-name" placeholder="Vd: Bố Nguyễn Văn An" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Tên của bạn (Con cái/Người bảo hộ):</label>
+          <input type="text" id="cfg-guardian-name" placeholder="Vd: Sơn (Con trai)" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Telegram Chat ID nhận cảnh báo:</label>
+          <input type="text" id="cfg-guardian-chatid" placeholder="Vd: 5456687635" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono font-semibold">
+          <p class="text-xs text-slate-500 mt-1">
+            * Nhắn tin cho bot <a href="https://t.me/safeqr_guardian_2026_bot" target="_blank" class="text-blue-600 font-bold underline">@safeqr_guardian_2026_bot</a> để nhận thông báo khẩn cấp.
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button onclick="closeGuardianModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 transition">
+          Hủy Bỏ
+        </button>
+        <button onclick="saveGuardianSettings()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl text-white shadow-md transition">
+          Lưu & Kích Hoạt
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="mt-8 text-center text-xs md:text-sm text-slate-500 font-medium">
     SafeQR-Cloud © 2026 — Nhóm 19 | Đề tài Điện toán đám mây
@@ -143,13 +211,86 @@
     let html5QrCode = null;
     const API_BASE = "http://localhost:8000/api/v1";
 
-    // Demo samples with valid CRC
-    // Sample 1: Safe Techcombank 45k
-    // Sample 2: Fraud MBBank NOP PHAT NGUOI VNEID
     const DEMO_STRINGS = {
       1: "00020101021238420010A000000727012400069704070110190367890153037045405450005802VN62220818com trua van phong6304",
       2: "00020101021238420010A00000072701240006970422011003456789015303704540735000005802VN62350831NOP PHAT NGUOI VNEID GIAO THONG6304"
     };
+
+    // Khởi tạo trạng thái bảo hộ từ LocalStorage
+    document.addEventListener("DOMContentLoaded", () => {
+      refreshGuardianBadge();
+    });
+
+    function refreshGuardianBadge() {
+      const elderPhone = localStorage.getItem('safeqr_elder_phone');
+      const elderName = localStorage.getItem('safeqr_elder_name') || 'Phụ huynh';
+      const badge = document.getElementById('guardian-badge');
+      const text = document.getElementById('guardian-badge-text');
+
+      if (elderPhone) {
+        badge.className = "inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm";
+        text.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 inline"></i> Đang bảo vệ: <b>${elderName}</b> (${elderPhone})`;
+      } else {
+        badge.className = "inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm";
+        text.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 inline"></i> Chưa liên kết người bảo hộ`;
+      }
+      lucide.createIcons();
+    }
+
+    function openGuardianModal() {
+      document.getElementById('cfg-elder-phone').value = localStorage.getItem('safeqr_elder_phone') || '0912345678';
+      document.getElementById('cfg-elder-name').value = localStorage.getItem('safeqr_elder_name') || 'Bố An';
+      document.getElementById('cfg-guardian-name').value = localStorage.getItem('safeqr_guardian_name') || 'Sơn (Con trai)';
+      document.getElementById('cfg-guardian-chatid').value = localStorage.getItem('safeqr_guardian_chatid') || '5456687635';
+      document.getElementById('guardian-modal').classList.remove('hidden');
+    }
+
+    function closeGuardianModal() {
+      document.getElementById('guardian-modal').classList.add('hidden');
+    }
+
+    async function saveGuardianSettings() {
+      const elderPhone = document.getElementById('cfg-elder-phone').value.trim();
+      const elderName = document.getElementById('cfg-elder-name').value.trim();
+      const guardianName = document.getElementById('cfg-guardian-name').value.trim();
+      const chatId = document.getElementById('cfg-guardian-chatid').value.trim();
+
+      if (!elderPhone || !chatId) {
+        alert("Vui lòng nhập đầy đủ Số điện thoại người thân và Telegram Chat ID!");
+        return;
+      }
+
+      // Lưu vào LocalStorage của thiết bị
+      localStorage.setItem('safeqr_elder_phone', elderPhone);
+      localStorage.setItem('safeqr_elder_name', elderName);
+      localStorage.setItem('safeqr_guardian_name', guardianName);
+      localStorage.setItem('safeqr_guardian_chatid', chatId);
+
+      // Gọi API tự khai báo lên Backend
+      try {
+        const resp = await fetch(`${API_BASE}/guardians/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            elder_phone: elderPhone,
+            elder_name: elderName,
+            guardian_name: guardianName,
+            guardian_telegram_chat_id: chatId
+          })
+        });
+        const resData = await resp.json();
+        if (resp.ok) {
+          alert(`🎉 ${resData.message}\nMột tin nhắn xác nhận vừa được gửi đến Telegram của bạn!`);
+        } else {
+          alert("Lỗi đăng ký CSDL: " + (resData.detail || "Không rõ nguyên nhân"));
+        }
+      } catch (err) {
+        alert("Đã lưu cục bộ vào thiết bị! (Backend tạm thời không phản hồi)");
+      }
+
+      closeGuardianModal();
+      refreshGuardianBadge();
+    }
 
     function switchTab(tab) {
       const isCamera = tab === 'camera';
@@ -207,11 +348,16 @@
       document.getElementById('loading-spinner').classList.remove('hidden');
       document.getElementById('result-container').classList.add('hidden');
 
+      const elderPhone = localStorage.getItem('safeqr_elder_phone') || "";
+
       try {
         const resp = await fetch(`${API_BASE}/scan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ raw_qr: rawQr })
+          body: JSON.stringify({
+            raw_qr: rawQr,
+            elder_phone: elderPhone
+          })
         });
         const data = await resp.json();
         document.getElementById('loading-spinner').classList.add('hidden');

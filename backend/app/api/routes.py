@@ -1,10 +1,14 @@
 import hashlib
 from fastapi import APIRouter, HTTPException, status
-from ..models.schemas import ScanQRRequest, ScanQRResponse, BankBeneficiaryInfo, RiskAssessment
+from ..models.schemas import (
+    ScanQRRequest, ScanQRResponse, BankBeneficiaryInfo, RiskAssessment,
+    RegisterGuardianRequest, RegisterGuardianResponse
+)
 from ..services.emvco_parser import VietQRData
 from ..services.risk_engine import check_semantic_conflict, calculate_risk_score
 from ..services.telegram_service import send_scam_alert
 from ..services.ml_service import predict_fraud_probability
+from ..services.db_service import register_guardian, get_guardians_for_phone, send_registration_confirmation
 
 router = APIRouter(prefix="/api/v1", tags=["VietQR Security Scanner"])
 
@@ -26,9 +30,38 @@ VIETNAM_BANKS = {
 def health_check():
     return {"status": "ok", "service": "SafeQR-Cloud Core API", "version": "1.0.0"}
 
-@router.get("/banks")
-def get_supported_banks():
-    return {"status": "success", "data": VIETNAM_BANKS}
+@router.post("/guardians/register", response_model=RegisterGuardianResponse)
+async def api_register_guardian(payload: RegisterGuardianRequest):
+    """
+    Self-declaration endpoint: Con cái tự khai báo SĐT của bố mẹ và Telegram Chat ID.
+    """
+    if not payload.elder_phone.strip() or not payload.guardian_telegram_chat_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Số điện thoại người thân và Telegram Chat ID không được để trống!"
+        )
+
+    record = register_guardian(
+        elder_phone=payload.elder_phone,
+        elder_name=payload.elder_name,
+        guardian_name=payload.guardian_name,
+        chat_id=payload.guardian_telegram_chat_id,
+        guardian_phone=payload.guardian_phone
+    )
+
+    # Send a confirmation alert message to the guardian Telegram
+    await send_registration_confirmation(
+        chat_id=payload.guardian_telegram_chat_id,
+        elder_name=payload.elder_name,
+        elder_phone=payload.elder_phone,
+        guardian_name=payload.guardian_name
+    )
+
+    return RegisterGuardianResponse(
+        success=True,
+        message=f"Đã liên kết bảo vệ thành công cho {payload.elder_name} ({payload.elder_phone})!",
+        data=record
+    )
 
 @router.post("/scan", response_model=ScanQRResponse)
 async def scan_and_evaluate_qr(payload: ScanQRRequest):
@@ -72,18 +105,23 @@ async def scan_and_evaluate_qr(payload: ScanQRRequest):
     )
     
     alert_triggered = False
-    # If high risk (R >= 70), dispatch emergency Telegram alert
+    # If high risk (R >= 70), dispatch emergency Telegram alert to all registered guardians
     if risk["score"] >= 70:
         bank_name = VIETNAM_BANKS.get(qr_data.bank_bin, f"Mã BIN: {qr_data.bank_bin}")
-        alert_sent = await send_scam_alert(
-            bank_name=bank_name,
-            account_number=qr_data.account_number,
-            amount=qr_data.amount,
-            message=qr_data.message,
-            risk_score=risk["score"],
-            risk_reason=risk["reason"]
-        )
-        alert_triggered = alert_sent
+        guardian_chat_ids = get_guardians_for_phone(payload.elder_phone)
+        
+        for cid in guardian_chat_ids:
+            sent = await send_scam_alert(
+                bank_name=bank_name,
+                account_number=qr_data.account_number,
+                amount=qr_data.amount,
+                message=qr_data.message,
+                risk_score=risk["score"],
+                risk_reason=risk["reason"],
+                target_chat_id=cid
+            )
+            if sent:
+                alert_triggered = True
     
     return ScanQRResponse(
         success=True,
