@@ -250,8 +250,8 @@
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="text-lg font-bold text-slate-900">Liên Kết Người Bảo Hộ</h3>
-            <p class="text-xs text-slate-500">Chỉ cần cài đặt 1 lần duy nhất</p>
+            <h3 id="modal-heading-title" class="text-lg font-bold text-slate-900">Thiết Lập Bảo Vệ Người Thân</h3>
+            <p id="modal-heading-subtitle" class="text-xs text-slate-500">Cài đặt 1 lần để hệ thống gửi cảnh báo thật</p>
           </div>
         </div>
         <button onclick="closeGuardianModal()" class="text-slate-400 hover:text-slate-700 p-1">
@@ -259,10 +259,19 @@
         </button>
       </div>
 
+      <!-- Khung hướng dẫn chung khi mở lần đầu -->
+      <div id="first-time-guide" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1">
+        <p class="font-extrabold flex items-center gap-1 text-amber-800">
+          <i data-lucide="info" class="w-4 h-4 text-amber-600 inline"></i> Hướng Dẫn Kích Hoạt Lần Đầu:
+        </p>
+        <p>• Nhập <b>Số điện thoại của Bố/Mẹ</b> (thiết bị này sẽ dùng số này để định danh).</p>
+        <p>• Nhập <b>Telegram Chat ID của bạn (con cái)</b> để khi bố mẹ quét mã lừa đảo, hệ thống sẽ tự động khóa tiền và báo động ngay về máy bạn.</p>
+      </div>
+
       <div class="space-y-3.5 text-sm">
         <div>
           <label class="block font-bold text-slate-700 mb-1">Số điện thoại của người quét (Bố/Mẹ):</label>
-          <input type="text" id="cfg-elder-phone" placeholder="Vd: 0912345678" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
+          <input type="text" id="cfg-elder-phone" placeholder="Nhập SĐT thật của bố mẹ (vd: 0988xxxxxx)" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold">
         </div>
 
         <div>
@@ -279,7 +288,7 @@
           <div class="flex items-center justify-between mb-1">
             <label class="block font-bold text-slate-700">Telegram Chat ID nhận cảnh báo:</label>
             <button type="button" onclick="document.getElementById('cfg-guardian-chatid').value='5456687635'" class="text-xs text-blue-600 font-bold hover:underline">
-              ⚡ Điền nhanh ID demo
+              ⚡ Điền Chat ID của tôi (5456687635)
             </button>
           </div>
           <input type="text" id="cfg-guardian-chatid" placeholder="Vd: 5456687635" class="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono font-semibold">
@@ -288,18 +297,21 @@
           <div class="mt-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
             <p class="font-bold flex items-center gap-1 text-blue-800">
               <i data-lucide="help-circle" class="w-3.5 h-3.5 text-blue-600 inline"></i> 
-              Cách lấy Chat ID của bạn (mất đúng 5 giây):
+              Cách lấy Chat ID Telegram của bạn (mất đúng 5 giây):
             </p>
-            <p>• <b>Bước 1:</b> Mở Telegram, tìm kiếm bot <a href="https://t.me/userinfobot" target="_blank" class="font-bold underline text-blue-700">@userinfobot</a> hoặc <a href="https://t.me/safeqr_guardian_2026_bot" target="_blank" class="font-bold underline text-blue-700">@safeqr_guardian_2026_bot</a></p>
-            <p>• <b>Bước 2:</b> Bấm nút <b>START</b> ➔ Bot sẽ gửi lại ngay dòng số <code>Id: 5456687635</code></p>
-            <p>• <b>Bước 3:</b> Copy dãy số đó dán vào ô này là xong!</p>
+            <p>• <b>Bước 1:</b> Mở Telegram, tìm bot <a href="https://t.me/userinfobot" target="_blank" class="font-bold underline text-blue-700">@userinfobot</a> hoặc <a href="https://t.me/safeqr_guardian_2026_bot" target="_blank" class="font-bold underline text-blue-700">@safeqr_guardian_2026_bot</a></p>
+            <p>• <b>Bước 2:</b> Bấm <b>START</b> ➔ Bot gửi lại dòng: <code>Id: 5456687635</code></p>
+            <p>• <b>Bước 3:</b> Copy số đó dán vào ô này là xong!</p>
           </div>
         </div>
       </div>
 
       <div class="mt-6 flex gap-3">
+        <button id="btn-reset-guardian" onclick="resetGuardianSettings()" class="hidden py-3 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition">
+          Xóa Cài Đặt
+        </button>
         <button onclick="closeGuardianModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 transition">
-          Hủy Bỏ
+          Đóng
         </button>
         <button onclick="saveGuardianSettings()" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl text-white shadow-md transition">
           Lưu & Kích Hoạt
@@ -330,6 +342,13 @@
     // Khởi tạo trạng thái bảo hộ từ LocalStorage
     document.addEventListener("DOMContentLoaded", () => {
       refreshGuardianBadge();
+      const elderPhone = localStorage.getItem('safeqr_elder_phone');
+      if (!elderPhone) {
+        // Tự động mở modal hướng dẫn kích hoạt lần đầu
+        setTimeout(() => {
+          openGuardianModal();
+        }, 300);
+      }
     });
 
     function refreshGuardianBadge() {
@@ -339,21 +358,58 @@
       const text = document.getElementById('guardian-badge-text');
 
       if (elderPhone) {
-        badge.className = "inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm";
-        text.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 inline"></i> Đang bảo vệ: <b>${elderName}</b> (${elderPhone})`;
+        badge.className = "inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm cursor-pointer hover:bg-emerald-100 transition";
+        text.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 inline"></i> Đang bảo vệ: <b>${elderName}</b> (${elderPhone}) <span class="text-xs text-blue-600 underline font-normal ml-1">Đổi</span>`;
+        badge.onclick = openGuardianModal;
       } else {
-        badge.className = "inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm";
-        text.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 inline"></i> Chưa liên kết người bảo hộ`;
+        badge.className = "inline-flex items-center gap-1.5 bg-amber-50 border border-amber-300 text-amber-800 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm cursor-pointer hover:bg-amber-100 transition";
+        text.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 inline"></i> Chưa thiết lập người bảo hộ <span class="text-xs text-blue-600 underline font-bold ml-1">Cài ngay</span>`;
+        badge.onclick = openGuardianModal;
       }
       lucide.createIcons();
     }
 
     function openGuardianModal() {
-      document.getElementById('cfg-elder-phone').value = localStorage.getItem('safeqr_elder_phone') || '0912345678';
-      document.getElementById('cfg-elder-name').value = localStorage.getItem('safeqr_elder_name') || 'Bố An';
-      document.getElementById('cfg-guardian-name').value = localStorage.getItem('safeqr_guardian_name') || 'Sơn (Con trai)';
-      document.getElementById('cfg-guardian-chatid').value = localStorage.getItem('safeqr_guardian_chatid') || '5456687635';
+      const savedPhone = localStorage.getItem('safeqr_elder_phone') || '';
+      const savedElderName = localStorage.getItem('safeqr_elder_name') || '';
+      const savedGuardianName = localStorage.getItem('safeqr_guardian_name') || '';
+      const savedChatId = localStorage.getItem('safeqr_guardian_chatid') || '5456687635';
+
+      document.getElementById('cfg-elder-phone').value = savedPhone;
+      document.getElementById('cfg-elder-name').value = savedElderName;
+      document.getElementById('cfg-guardian-name').value = savedGuardianName;
+      document.getElementById('cfg-guardian-chatid').value = savedChatId;
+
+      const titleEl = document.getElementById('modal-heading-title');
+      const subEl = document.getElementById('modal-heading-subtitle');
+      const guideEl = document.getElementById('first-time-guide');
+      const resetBtn = document.getElementById('btn-reset-guardian');
+
+      if (savedPhone) {
+        titleEl.textContent = "Cập Nhật Thông Tin Bảo Hộ";
+        subEl.textContent = "Bạn có thể thay đổi SĐT hoặc Chat ID bất cứ lúc nào";
+        guideEl.classList.add('hidden');
+        resetBtn.classList.remove('hidden');
+      } else {
+        titleEl.textContent = "Thiết Lập Bảo Vệ Lần Đầu";
+        subEl.textContent = "Nhập thông tin thực tế để bắt đầu sử dụng như thật";
+        guideEl.classList.remove('hidden');
+        resetBtn.classList.add('hidden');
+      }
+
       document.getElementById('guardian-modal').classList.remove('hidden');
+    }
+
+    function resetGuardianSettings() {
+      if (confirm("Bạn có chắc chắn muốn xóa cài đặt người bảo hộ hiện tại để thiết lập lại từ đầu?")) {
+        localStorage.removeItem('safeqr_elder_phone');
+        localStorage.removeItem('safeqr_elder_name');
+        localStorage.removeItem('safeqr_guardian_name');
+        localStorage.removeItem('safeqr_guardian_chatid');
+        refreshGuardianBadge();
+        closeGuardianModal();
+        alert("Đã xóa cài đặt! Bạn có thể bắt đầu thiết lập thông tin mới.");
+      }
     }
 
     function closeGuardianModal() {
