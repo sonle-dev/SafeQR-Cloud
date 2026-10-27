@@ -44,7 +44,7 @@ def calculate_risk_score(
             "reason": "Tài khoản thụ hưởng nằm trong Danh sách đen lừa đảo đã xác thực!"
         }
         
-    w1, w2, w3 = 0.40, 0.35, 0.25
+    w1, w2, w3 = 0.45, 0.35, 0.20
     
     # S_velocity: 0 if <= 2 scans, ramps up to 100 if >= 10 scans
     if velocity_count <= 2:
@@ -55,6 +55,11 @@ def calculate_risk_score(
         s_velocity = int(((velocity_count - 2) / 8.0) * 100)
         
     raw_r = (w1 * conflict_score) + (w2 * (ml_probability * 100)) + (w3 * s_velocity)
+    
+    # If explicit public authority conflict is detected and ML agrees, elevate to High Risk
+    if conflict_score >= 100 and ml_probability >= 0.5:
+        raw_r = max(raw_r, 75.0)
+
     r = min(100, int(round(raw_r)))
     
     if r < 35:

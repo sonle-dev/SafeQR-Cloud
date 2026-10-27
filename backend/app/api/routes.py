@@ -3,6 +3,8 @@ from fastapi import APIRouter, HTTPException, status
 from ..models.schemas import ScanQRRequest, ScanQRResponse, BankBeneficiaryInfo, RiskAssessment
 from ..services.emvco_parser import VietQRData
 from ..services.risk_engine import check_semantic_conflict, calculate_risk_score
+from ..services.telegram_service import send_scam_alert
+from ..services.ml_service import predict_fraud_probability
 
 router = APIRouter(prefix="/api/v1", tags=["VietQR Security Scanner"])
 
@@ -29,7 +31,7 @@ def get_supported_banks():
     return {"status": "success", "data": VIETNAM_BANKS}
 
 @router.post("/scan", response_model=ScanQRResponse)
-def scan_and_evaluate_qr(payload: ScanQRRequest):
+async def scan_and_evaluate_qr(payload: ScanQRRequest):
     raw_qr = payload.raw_qr.strip()
     if not raw_qr:
         raise HTTPException(
@@ -51,11 +53,13 @@ def scan_and_evaluate_qr(payload: ScanQRRequest):
     # 3. Check Semantic Conflict (Công quyền vs Tài khoản cá nhân)
     has_conflict, conflict_score, detected_kw = check_semantic_conflict(qr_data.message)
     
-    # 4. ML / Heuristic Probability
-    # When ML model is loaded, we run pipeline. If not yet trained, baseline heuristic is used.
-    ml_prob = 0.85 if has_conflict else 0.05
+    # 4. ML Semantic Inference
+    ml_prob = predict_fraud_probability(qr_data.message)
+    if has_conflict and ml_prob < 0.5:
+        # Boost confidence when cross-field semantic conflict is clearly detected
+        ml_prob = max(ml_prob, 0.75)
     
-    # 5. Velocity and Blacklist (in local mode, baseline velocity=1, blacklist=False)
+    # 5. Velocity and Blacklist
     velocity_count = 1
     is_blacklisted = False
     
@@ -67,7 +71,19 @@ def scan_and_evaluate_qr(payload: ScanQRRequest):
         is_blacklisted=is_blacklisted
     )
     
-    alert_triggered = (risk["score"] >= 70)
+    alert_triggered = False
+    # If high risk (R >= 70), dispatch emergency Telegram alert
+    if risk["score"] >= 70:
+        bank_name = VIETNAM_BANKS.get(qr_data.bank_bin, f"Mã BIN: {qr_data.bank_bin}")
+        alert_sent = await send_scam_alert(
+            bank_name=bank_name,
+            account_number=qr_data.account_number,
+            amount=qr_data.amount,
+            message=qr_data.message,
+            risk_score=risk["score"],
+            risk_reason=risk["reason"]
+        )
+        alert_triggered = alert_sent
     
     return ScanQRResponse(
         success=True,

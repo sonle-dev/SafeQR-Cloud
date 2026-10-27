@@ -1,11 +1,18 @@
 import re
 import os
+import sys
 import joblib
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, accuracy_score
+
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 def clean_vietnamese_text(text: str) -> str:
     """
@@ -17,7 +24,6 @@ def clean_vietnamese_text(text: str) -> str:
     if not isinstance(text, str):
         return ""
     text = text.lower()
-    # Normalize obfuscations like n.o.p -> nop
     text = re.sub(r'(\b\w)\.(\w)\.(\w)', r'\1\2\3', text)
     text = re.sub(r'[^\w\s]', ' ', text)
     text = re.sub(r'\s+', ' ', text).strip()
@@ -29,8 +35,8 @@ def train_model():
     os.makedirs(model_output_dir, exist_ok=True)
     model_output_path = os.path.join(model_output_dir, "vietqr_nlp_model.pkl")
 
-    print(f"[*] Đang nạp dataset từ: {dataset_path}")
-    df = pd.read_csv(dataset_path)
+    print(f"[*] Dang nap dataset tu: {dataset_path}")
+    df = pd.read_csv(dataset_path, encoding='utf-8')
     df['cleaned_text'] = df['text'].apply(clean_vietnamese_text)
 
     X = df['cleaned_text']
@@ -41,18 +47,18 @@ def train_model():
         ('clf', LogisticRegression(C=1.0, solver='liblinear', random_state=42))
     ])
 
-    print("[*] Đang huấn luyện mô hình Logistic Regression + TF-IDF...")
+    print("[*] Dang huan luyen mo hinh Logistic Regression + TF-IDF...")
     pipeline.fit(X, y)
 
     y_pred = pipeline.predict(X)
     acc = accuracy_score(y, y_pred)
-    print(f"[+] Độ chính xác trên tập huấn luyện: {acc * 100:.2f}%")
-    print("\nBáo cáo phân loại:\n", classification_report(y, y_pred))
+    print(f"[+] Do chinh xac tren tap huan luyen: {acc * 100:.2f}%")
+    print("\nBao cao phan loai:\n", classification_report(y, y_pred))
 
     joblib.dump(pipeline, model_output_path)
     file_size_kb = os.path.getsize(model_output_path) / 1024
-    print(f"[+] Đã lưu mô hình thành công tại: {model_output_path}")
-    print(f"[+] Dung lượng tệp model: {file_size_kb:.2f} KB (Cực nhẹ, tối ưu Cloud PaaS)")
+    print(f"[+] Da luu mo hinh tai: {model_output_path}")
+    print(f"[+] Dung luong tep model: {file_size_kb:.2f} KB (Toi uu Cloud)")
 
 if __name__ == "__main__":
     train_model()

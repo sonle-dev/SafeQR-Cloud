@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     # Telegram Emergency Webhook
-    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    DEFAULT_GUARDIAN_CHAT_ID: str = os.getenv("DEFAULT_GUARDIAN_CHAT_ID", "")
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "8739682883:AAGXiSPNEWTug5FidnWuflCXuqRwpyZalfU")
+    DEFAULT_GUARDIAN_CHAT_ID: str = os.getenv("DEFAULT_GUARDIAN_CHAT_ID", "5456687635")
 
     class Config:
         env_file = ".env"

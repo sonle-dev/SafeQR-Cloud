@@ -20,41 +20,61 @@ Kẻ lừa đảo thường mạo danh cơ quan nhà nước (công an, phạt n
 
 ---
 
-## 🏗️ 2. Kiến trúc Điện toán đám mây (Cloud Architecture)
+## 🏗️ 2. Kiến trúc Điện toán đám mây (AWS IaaS Architecture)
 
-Hệ thống áp dụng mô hình **Micro-Cloud / Serverless Decoupled Architecture** trên nền tảng Cloud miễn phí (Free Tier) với chi phí 0 VNĐ:
+Hệ thống được thiết kế theo mô hình **IaaS (Infrastructure as a Service)** chuẩn mực trên **Amazon Web Services (AWS)**, tận dụng gói **AWS Free Tier (750 giờ/tháng)**:
+
+* **Compute IaaS:** Máy chủ ảo **AWS EC2 (Ubuntu 24.04 LTS, t2.micro/t3.micro)** kết hợp **Elastic IP** cố định.
+* **Storage IaaS:** Ổ đĩa khối **AWS EBS (Elastic Block Store)** lưu trữ dữ liệu Database và Redis bền vững.
+* **Networking & Security:** **AWS Virtual Private Cloud (VPC)** kết hợp **AWS Security Groups** phân tầng tường lửa nghiêm ngặt (chỉ mở Port 22 SSH, 80 HTTP, 443 HTTPS; cô lập nội bộ Port 5432 và 6379).
+* **Container Orchestration:** Điều phối 4 container bằng **Docker & Docker Compose**:
+  1. `safeqr_nginx`: Reverse Proxy điều hướng traffic và phân phối Frontend (Port 80/443).
+  2. `safeqr_backend`: FastAPI Core Engine (EMVCo TLV Parser, ML Inference, Risk Engine).
+  3. `safeqr_redis`: Bộ đệm In-Memory siêu tốc (<10ms) & Bộ đếm tần suất quét (Velocity Counter).
+  4. `safeqr_postgres`: CSDL quan hệ lưu Blacklist và nhật ký cảnh báo giao dịch.
 
 ```
-[Khách hàng / Người cao tuổi]
-              │
-              ▼ (1. HTTPS / Global CDN)
-     ┌──────────────────┐
-     │   Vercel Edge    │  ──► Frontend Web UI (Nút to, chữ lớn, nén ảnh phía client)
-     └────────┬─────────┘
-              │ (2. Gửi chuỗi QR / ảnh)
-              ▼
-     ┌──────────────────┐
-     │  Render Service  │  ──► Backend FastAPI Core API
-     └────────┬─────────┘      • Bộ giải mã EMVCo TLV & Kiểm tra CRC-16
-              │                • Động cơ suy luận Học máy (Model ML .pkl)
-              │
-     ┌────────┴─────────────────────────────────────────┐
-     │                                                  │
-     ▼ (3. Tra cứu cache & velocity < 10ms)             ▼ (4. Quản lý Blacklist & Log)
-┌──────────────────────┐                       ┌──────────────────────┐
-│  Upstash Redis Cloud │                       │  Neon Serverless DB  │
-│  (In-Memory Cache)   │                       │  (PostgreSQL Cloud)  │
-├──────────────────────┤                       ├──────────────────────┤
-│ • Cache băm SHA-256  │                       │ • Danh sách đen STK  │
-│ • Đếm tần suất quét  │                       │ • Lịch sử cảnh báo   │
-│ • Distributed Lock   │                       │ • Thông tin người thân│
-└──────────────────────┘                       └──────────────────────┘
-     │
-     ▼ (5. Kích hoạt khi R >= 70)
-┌──────────────────────────────────────┐
-│  Telegram Emergency Alert Webhook    │ ──────► [Điện thoại Người bảo hộ / Con cái]
-└──────────────────────────────────────┘
+                          INTERNET (Người dùng & Người giám hộ)
+                                        │
+                                        ▼ (Port 80 / 443)
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ AWS Cloud - Virtual Private Cloud (VPC)                                       │
+│                                                                               │
+│  AWS Security Group (Tường lửa mạng IaaS):                                    │
+│  • Mở: Port 22 (SSH Quản trị), Port 80 (HTTP), Port 443 (HTTPS)               │
+│  • Chặn toàn bộ bên ngoài: Port 5432 (DB) và 6379 (Redis)                     │
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐  │
+│  │ AWS EC2 Instance (Ubuntu 24.04 LTS) + Elastic IP                        │  │
+│  │                                                                         │  │
+│  │   ┌─────────────────────────────────────────────────────────────────┐   │  │
+│  │   │ Nginx Reverse Proxy (Port 80)                                   │   │  │
+│  │   │ ├── /        ──► Serve Static Frontend (Giao diện người già)    │   │  │
+│  │   │ └── /api/    ──► Proxy pass tới FastAPI Core Engine (Port 8000) │   │  │
+│  │   └────────────────────────┬────────────────────────────────────────┘   │  │
+│  │                            │ (Mạng nội bộ Docker Bridge Network)        │  │
+│  │            ┌───────────────┴───────────────┐                            │  │
+│  │            ▼                               ▼                            │  │
+│  │   ┌───────────────────┐          ┌───────────────────┐                  │  │
+│  │   │ SafeQR FastAPI    │          │ Redis Container   │                  │  │
+│  │   │ • EMVCo TLV Parser│ ◄──────► │ (Port 6379)       │                  │  │
+│  │   │ • ML .pkl Model   │          │ • Cache SHA-256   │                  │  │
+│  │   │ • Risk Engine R   │          │ • Velocity counter│                  │  │
+│  │   └────────┬──────────┘          └───────────────────┘                  │  │
+│  │            │                                                            │  │
+│  │            ▼                                                            │  │
+│  │   ┌───────────────────┐                                                 │  │
+│  │   │ Postgres DB       │ ◄── [Mount tới AWS EBS Volume - Lưu trữ bền vững│  │
+│  │   │ (Port 5432)       │                                                 │  │
+│  │   └───────────────────┘                                                 │  │
+│  │            │ (Khi R >= 70)                                              │  │
+│  │            ▼                                                            │  │
+│  │     Telegram Webhook ──► [Gửi thông báo đẩy đến điện thoại con cái]    │  │
+│  └─────────────────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> 📖 *Xem hướng dẫn thiết lập chi tiết tại [docs/AWS_DEPLOYMENT_GUIDE.md](docs/AWS_DEPLOYMENT_GUIDE.md)*
 
 ---
 

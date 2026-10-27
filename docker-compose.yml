@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # 1. Reverse Proxy & Frontend Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: safeqr_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - safeqr_network
+
+  # 2. FastAPI Core Engine (EMVCo Parser, ML Inference, Risk Engine)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: safeqr_backend
+    restart: always
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://safeqr_admin:safeqr_secret_2026@postgres:5432/safeqr_db
+      - TELEGRAM_BOT_TOKEN=8739682883:AAGXiSPNEWTug5FidnWuflCXuqRwpyZalfU
+      - DEFAULT_GUARDIAN_CHAT_ID=5456687635
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - safeqr_network
+
+  # 3. In-Memory Cache & Velocity Counter (Redis IaaS Container)
+  redis:
+    image: redis:7-alpine
+    container_name: safeqr_redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - safeqr_network
+
+  # 4. PostgreSQL Relational Database (IaaS Database Container mounted on AWS EBS)
+  postgres:
+    image: postgres:16-alpine
+    container_name: safeqr_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: safeqr_admin
+      POSTGRES_PASSWORD: safeqr_secret_2026
+      POSTGRES_DB: safeqr_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - safeqr_network
+
+networks:
+  safeqr_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
