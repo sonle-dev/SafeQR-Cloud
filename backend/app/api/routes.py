@@ -2,7 +2,7 @@ import hashlib
 from fastapi import APIRouter, HTTPException, status
 from ..models.schemas import (
     ScanQRRequest, ScanQRResponse, BankBeneficiaryInfo, RiskAssessment,
-    RegisterGuardianRequest, RegisterGuardianResponse
+    RegisterGuardianRequest, RegisterGuardianResponse, TestAlertRequest
 )
 from ..services.emvco_parser import VietQRData
 from ..services.risk_engine import check_semantic_conflict, calculate_risk_score
@@ -30,7 +30,73 @@ VIETNAM_BANKS = {
 def health_check():
     return {"status": "ok", "service": "SafeQR-Cloud Core API", "version": "1.0.0"}
 
-@router.post("/guardians/register", response_model=RegisterGuardianResponse)
+@router.post("/test/send-alert")
+async def api_test_send_alert(payload: TestAlertRequest):
+    """
+    Endpoint phục vụ thuyết trình & kiểm thử: Bắn trực tiếp cảnh báo về Telegram.
+    """
+    scenarios = {
+        "phat_nguoi": {
+            "bank_name": "MBBank (Ngân hàng Quân Đội)",
+            "account_number": "0345678901",
+            "amount": 3500000.0,
+            "message": "NOP PHAT NGUOI VNEID TRONG 24H",
+            "risk_score": 95,
+            "reason": "Mạo danh Cục CSGT / VNeID yêu cầu nộp phạt vi phạm vào STK cá nhân"
+        },
+        "cong_an": {
+            "bank_name": "Techcombank",
+            "account_number": "1903888888",
+            "amount": 50000000.0,
+            "message": "CHUYEN TIEN TAM GIU DIEU TRA AN MA TUY",
+            "risk_score": 100,
+            "reason": "Mạo danh Cơ quan Cảnh sát Điều tra / Viện Kiểm sát đe dọa lệnh bắt tạm giam"
+        },
+        "khoan_vay": {
+            "bank_name": "VPBank",
+            "account_number": "0987654321",
+            "amount": 5000000.0,
+            "message": "PHI GIAI NGAN BAO HIEM KHOAN VAY TIN DUNG",
+            "risk_score": 85,
+            "reason": "Bẫy lừa đảo giải ngân khoản vay online: Ép nộp phí bảo hiểm khoản vay trước"
+        }
+    }
+
+    if payload.scenario in scenarios:
+        sc = scenarios[payload.scenario]
+        bank = sc["bank_name"]
+        acc = sc["account_number"]
+        amt = sc["amount"]
+        msg = sc["message"]
+        score = sc["risk_score"]
+        reason = sc["reason"]
+    else:
+        bank = payload.bank_name or "MBBank"
+        acc = payload.account_number or "0345678901"
+        amt = payload.amount or 3500000.0
+        msg = payload.message or "NOP PHAT NGUOI GIAO THONG"
+        score = payload.risk_score or 95
+        reason = payload.reason or "Phát hiện mâu thuẫn ngữ nghĩa và thao túng tâm lý"
+
+    target_chat = payload.target_chat_id or None
+
+    success = await send_scam_alert(
+        bank_name=bank,
+        account_number=acc,
+        amount=amt,
+        message=msg,
+        risk_score=score,
+        risk_reason=reason,
+        target_chat_id=target_chat
+    )
+
+    if success:
+        return {"status": "success", "message": f"Đã gửi cảnh báo [{msg}] tới Telegram thành công!"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Gửi tin nhắn Telegram thất bại. Kiểm tra Bot Token hoặc kết nối mạng."
+        )
 async def api_register_guardian(payload: RegisterGuardianRequest):
     """
     Self-declaration endpoint: Con cái tự khai báo SĐT của bố mẹ và Telegram Chat ID.

@@ -85,6 +85,55 @@
         </button>
       </div>
 
+      <!-- Khối Bắn Thử Cảnh Báo Telegram Cho Thuyết Trình Demo -->
+      <div class="mt-6 pt-5 border-t-2 border-dashed border-slate-200">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="p-1.5 bg-rose-100 text-rose-700 rounded-lg">
+            <i data-lucide="send" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-base font-extrabold text-slate-800">Bắn Thử Cảnh Báo Tới Telegram (Demo Thuyết Trình)</h3>
+        </div>
+        <p class="text-xs text-slate-500 mb-3 font-medium">Bấm một chạm để hệ thống lập tức gửi tin nhắn báo động đỏ về điện thoại của bạn:</p>
+        
+        <!-- 3 Nút Bắn Nhanh 3 Kịch Bản -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-3">
+          <button onclick="triggerQuickTelegramAlert('phat_nguoi')" class="p-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-sm transition flex flex-col items-center text-center">
+            <i data-lucide="bell-ring" class="w-4 h-4 mb-1"></i>
+            <span>1. Phạt Nguội VNeID</span>
+            <span class="text-[10px] opacity-80">(3.500.000đ)</span>
+          </button>
+
+          <button onclick="triggerQuickTelegramAlert('cong_an')" class="p-2.5 bg-red-700 hover:bg-red-800 text-white rounded-xl font-bold text-xs shadow-sm transition flex flex-col items-center text-center">
+            <i data-lucide="alert-triangle" class="w-4 h-4 mb-1"></i>
+            <span>2. Mạo Danh Công An</span>
+            <span class="text-[10px] opacity-80">(50.000.000đ)</span>
+          </button>
+
+          <button onclick="triggerQuickTelegramAlert('khoan_vay')" class="p-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition flex flex-col items-center text-center">
+            <i data-lucide="dollar-sign" class="w-4 h-4 mb-1"></i>
+            <span>3. Bẫy Khoản Vay</span>
+            <span class="text-[10px] opacity-80">(5.000.000đ)</span>
+          </button>
+        </div>
+
+        <!-- Ô Tùy Chỉnh Nội Dung Để Bắn -->
+        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+          <div class="text-xs font-bold text-slate-600">Hoặc tự nhập nội dung tùy ý để kiểm tra:</div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="custom-test-bank" placeholder="Ngân hàng (vd: MBBank)" value="MBBank" class="p-2 text-xs rounded-lg border border-slate-300 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <input type="text" id="custom-test-acc" placeholder="Số tài khoản" value="0345678901" class="p-2 text-xs rounded-lg border border-slate-300 font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="custom-test-amount" placeholder="Số tiền (VNĐ)" value="5000000" class="p-2 text-xs rounded-lg border border-slate-300 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500">
+            <input type="text" id="custom-test-msg" placeholder="Lời nhắn chuyển tiền" value="NOP PHAT NGUOI VNEID TRONG 24H" class="p-2 text-xs rounded-lg border border-slate-300 font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500">
+          </div>
+          <button onclick="triggerCustomTelegramAlert()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i> Bắn Tin Nhắn Tùy Chỉnh Này Tới Telegram
+          </button>
+          <div id="test-alert-status" class="hidden text-center text-xs font-bold py-1 rounded-lg"></div>
+        </div>
+      </div>
+
       <div class="mt-5">
         <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Chuỗi mã VietQR thô:</label>
         <textarea id="raw-qr-input" rows="3" placeholder="Dán chuỗi VietQR (bắt đầu bằng 000201...)" class="w-full p-3 font-mono text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
@@ -290,6 +339,76 @@
 
       closeGuardianModal();
       refreshGuardianBadge();
+    }
+
+    async function triggerQuickTelegramAlert(scenario) {
+      const statusDiv = document.getElementById('test-alert-status');
+      statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-blue-100 text-blue-800 animate-pulse block";
+      statusDiv.textContent = "⏳ Đang kết nối gửi báo động tới Telegram...";
+
+      const targetChatId = localStorage.getItem('safeqr_guardian_chatid') || "";
+
+      try {
+        const resp = await fetch(`${API_BASE}/test/send-alert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scenario: scenario,
+            target_chat_id: targetChatId
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-emerald-100 text-emerald-800 block";
+          statusDiv.innerHTML = `✅ <b>Gửi thành công!</b> Hãy mở điện thoại kiểm tra Telegram ngay.`;
+        } else {
+          statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-rose-100 text-rose-800 block";
+          statusDiv.textContent = `❌ Lỗi: ${data.detail || 'Không gửi được'}`;
+        }
+      } catch (err) {
+        statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-rose-100 text-rose-800 block";
+        statusDiv.textContent = `❌ Không kết nối được tới Backend FastAPI!`;
+      }
+    }
+
+    async function triggerCustomTelegramAlert() {
+      const bank = document.getElementById('custom-test-bank').value.trim();
+      const acc = document.getElementById('custom-test-acc').value.trim();
+      const amount = parseFloat(document.getElementById('custom-test-amount').value) || 0;
+      const msg = document.getElementById('custom-test-msg').value.trim();
+      const targetChatId = localStorage.getItem('safeqr_guardian_chatid') || "";
+
+      const statusDiv = document.getElementById('test-alert-status');
+      statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-blue-100 text-blue-800 animate-pulse block";
+      statusDiv.textContent = "⏳ Đang gửi tin nhắn tùy chỉnh tới Telegram...";
+
+      try {
+        const resp = await fetch(`${API_BASE}/test/send-alert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scenario: "custom",
+            bank_name: bank,
+            account_number: acc,
+            amount: amount,
+            message: msg,
+            risk_score: 98,
+            reason: "Nội dung giao dịch mang tính chất đe dọa / thao túng tâm lý khẩn cấp",
+            target_chat_id: targetChatId
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-emerald-100 text-emerald-800 block";
+          statusDiv.innerHTML = `✅ <b>Đã gửi thành công!</b> Tin nhắn tùy chỉnh đã bay về Telegram của bạn.`;
+        } else {
+          statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-rose-100 text-rose-800 block";
+          statusDiv.textContent = `❌ Lỗi: ${data.detail || 'Không gửi được'}`;
+        }
+      } catch (err) {
+        statusDiv.className = "text-center text-xs font-bold py-1.5 px-3 rounded-lg bg-rose-100 text-rose-800 block";
+        statusDiv.textContent = `❌ Không kết nối được tới Backend FastAPI!`;
+      }
     }
 
     function switchTab(tab) {

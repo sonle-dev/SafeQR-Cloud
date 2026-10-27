@@ -41,3 +41,13 @@ class RegisterGuardianResponse(BaseModel):
     success: bool
     message: str
     data: Optional[Dict[str, Any]] = None
+
+class TestAlertRequest(BaseModel):
+    scenario: Optional[str] = Field("phat_nguoi", description="Kịch bản mẫu: phat_nguoi, cong_an, khoan_vay, custom")
+    bank_name: Optional[str] = Field("MBBank", description="Tên ngân hàng")
+    account_number: Optional[str] = Field("0345678901", description="Số tài khoản")
+    amount: Optional[float] = Field(3500000.0, description="Số tiền")
+    message: Optional[str] = Field("NOP PHAT NGUOI VNEID GIAO THONG", description="Nội dung chuyển tiền")
+    risk_score: Optional[int] = Field(95, description="Điểm rủi ro")
+    reason: Optional[str] = Field("Mạo danh cơ quan nhà nước yêu cầu nộp phạt vào STK cá nhân", description="Lý do cảnh báo")
+    target_chat_id: Optional[str] = Field(None, description="Telegram Chat ID nhận tin (nếu để trống dùng mặc định)")
