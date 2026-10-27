@@ -97,6 +97,8 @@ async def api_test_send_alert(payload: TestAlertRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Gửi tin nhắn Telegram thất bại. Kiểm tra Bot Token hoặc kết nối mạng."
         )
+
+@router.post("/guardians/register", response_model=RegisterGuardianResponse)
 async def api_register_guardian(payload: RegisterGuardianRequest):
     """
     Self-declaration endpoint: Con cái tự khai báo SĐT của bố mẹ và Telegram Chat ID.

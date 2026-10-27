@@ -51,3 +51,14 @@ class TestAlertRequest(BaseModel):
     risk_score: Optional[int] = Field(95, description="Điểm rủi ro")
     reason: Optional[str] = Field("Mạo danh cơ quan nhà nước yêu cầu nộp phạt vào STK cá nhân", description="Lý do cảnh báo")
     target_chat_id: Optional[str] = Field(None, description="Telegram Chat ID nhận tin (nếu để trống dùng mặc định)")
+
+class GenerateQRRequest(BaseModel):
+    bank_bin: str = Field("970422", description="Mã BIN ngân hàng (vd: 970422 - MB, 970407 - TCB, 970436 - VCB)")
+    account_number: str = Field(..., description="Số tài khoản thụ hưởng bất kỳ")
+    amount: Optional[float] = Field(None, description="Số tiền giao dịch")
+    message: Optional[str] = Field("", description="Nội dung/lời nhắn chuyển tiền")
+
+class GenerateQRResponse(BaseModel):
+    success: bool
+    raw_qr: str
+    qr_image_base64: str
